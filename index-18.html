@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Slide & Sort — Number Puzzle Master</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+/* ══════════════════════════════
+   BASE
+══════════════════════════════ */
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Nunito',sans-serif;min-height:100vh;overflow-x:hidden;
+  background:linear-gradient(180deg,#87ceeb 0%,#b0d8ee 35%,#fceabb 70%,#e8b87d 100%);
+  position:relative}
+body::before{content:'';position:fixed;bottom:0;left:0;right:0;height:28vh;
+  background:linear-gradient(180deg,transparent,#e8a84a 60%,#c87830 100%);
+  z-index:0;pointer-events:none}
+body::after{content:'';position:fixed;bottom:0;left:0;right:0;height:13vh;
+  background:#b56520;border-radius:55% 55% 0 0/18px 18px 0 0;
+  z-index:0;pointer-events:none}
+
+/* decorative */
+.sun{position:fixed;top:36px;right:52px;width:66px;height:66px;
+  background:radial-gradient(circle,#ffe066 40%,#ffb300 100%);border-radius:50%;
+  box-shadow:0 0 38px 14px rgba(255,200,0,.4);z-index:0;
+  animation:sunPulse 4s ease-in-out infinite}
+@keyframes sunPulse{0%,100%{box-shadow:0 0 38px 14px rgba(255,200,0,.4)}50%{box-shadow:0 0 56px 24px rgba(255,200,0,.6)}}
+.cactus{position:fixed;bottom:11vh;right:14px;font-size:48px;z-index:1;
+  filter:drop-shadow(2px 3px 4px rgba(0,0,0,.3));animation:sway 6s ease-in-out infinite;transform-origin:bottom center}
+.cactus2{position:fixed;bottom:9vh;left:10px;font-size:34px;z-index:1;
+  filter:drop-shadow(2px 3px 3px rgba(0,0,0,.3));animation:sway 8s ease-in-out infinite reverse;transform-origin:bottom center}
+@keyframes sway{0%,100%{transform:rotate(0deg)}50%{transform:rotate(2deg)}}
+.cloud{position:fixed;background:#fff;border-radius:50px;opacity:.82;z-index:0;animation:cloudDrift linear infinite}
+.cloud::before,.cloud::after{content:'';position:absolute;background:#fff;border-radius:50%}
+.cloud1{width:78px;height:22px;top:76px;left:-90px;animation-duration:28s}
+.cloud1::before{width:38px;height:38px;top:-18px;left:10px}
+.cloud1::after{width:28px;height:28px;top:-13px;left:34px}
+.cloud2{width:108px;height:28px;top:124px;left:-120px;animation-duration:38s;animation-delay:-14s;opacity:.62}
+.cloud2::before{width:48px;height:48px;top:-24px;left:14px}
+.cloud2::after{width:36px;height:36px;top:-18px;left:50px}
+@keyframes cloudDrift{from{transform:translateX(-200px)}to{transform:translateX(110vw)}}
+
+/* ══════════════════════════════
+   SPLASH
+══════════════════════════════ */
+#splash{position:fixed;inset:0;z-index:200;
+  background:linear-gradient(155deg,#091e30 0%,#0b4d36 38%,#1b3e06 72%,#6a3000 100%);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  overflow:hidden;transition:opacity .8s ease,transform .8s ease}
+#splash.hide{opacity:0;transform:scale(1.07);pointer-events:none}
+.float-tile{position:absolute;border-radius:12px;
+  background:linear-gradient(145deg,rgba(245,219,160,.14),rgba(224,184,106,.07));
+  border:1px solid rgba(200,150,50,.12);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Fredoka One',cursive;color:rgba(255,232,160,.22);
+  animation:floatUp linear infinite}
+@keyframes floatUp{0%{transform:translateY(110vh) rotate(0deg);opacity:0}10%{opacity:1}
+  90%{opacity:.35}100%{transform:translateY(-20vh) rotate(360deg);opacity:0}}
+.splash-center{text-align:center;animation:splashIn .9s cubic-bezier(.34,1.56,.64,1) forwards;opacity:0}
+@keyframes splashIn{from{opacity:0;transform:translateY(-52px) scale(.58)}to{opacity:1;transform:none}}
+
+/* Animated puzzle grid on splash */
+.splash-puzzle-icon{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;
+  width:90px;height:90px;margin:0 auto 16px;
+  animation:spinIn .9s .08s cubic-bezier(.34,1.56,.64,1) both}
+@keyframes spinIn{from{opacity:0;transform:rotate(-180deg) scale(0)}to{opacity:1;transform:none}}
+.sp-tile{background:linear-gradient(145deg,#f5dba0,#e0b86a);border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Fredoka One',cursive;font-size:17px;color:#3d2504;
+  box-shadow:0 3px 0 #9a6010,0 4px 8px rgba(0,0,0,.35);border:1px solid #c9993a;
+  animation:tileIn .5s ease both}
+@keyframes tileIn{from{transform:scale(0) rotate(22deg)}to{transform:none}}
+.sp-tile.empty{background:rgba(0,0,0,.44);box-shadow:inset 0 3px 8px rgba(0,0,0,.6)}
+
+.splash-title{font-family:'Fredoka One',cursive;font-size:clamp(32px,9vw,54px);
+  color:#ffe8a0;text-shadow:0 4px 20px rgba(0,0,0,.6),0 0 50px rgba(255,200,0,.3);
+  letter-spacing:2px;animation:splashIn .9s .14s cubic-bezier(.34,1.56,.64,1) both}
+.splash-sub{font-size:13px;color:rgba(255,232,160,.68);letter-spacing:3px;
+  text-transform:uppercase;margin:5px 0 26px;
+  animation:splashIn .9s .24s cubic-bezier(.34,1.56,.64,1) both}
+.splash-play-btn{display:inline-flex;align-items:center;gap:10px;
+  padding:15px 46px;background:linear-gradient(145deg,#f9c547,#e09420);
+  color:#3d2000;font-family:'Fredoka One',cursive;font-size:21px;
+  border-radius:18px;border:3px solid #a06010;cursor:pointer;
+  box-shadow:0 6px 0 #804000,0 10px 22px rgba(0,0,0,.4);
+  transition:all .15s;animation:splashIn .9s .38s cubic-bezier(.34,1.56,.64,1) both}
+.splash-play-btn:hover{background:linear-gradient(145deg,#ffd566,#f0a830);
+  transform:translateY(-3px);box-shadow:0 9px 0 #804000,0 14px 28px rgba(0,0,0,.4)}
+.splash-play-btn:active{transform:translateY(3px);box-shadow:0 2px 0 #804000}
+
+/* ══════════════════════════════
+   LEVEL SELECT
+══════════════════════════════ */
+#lss{position:fixed;inset:0;z-index:190;
+  background:linear-gradient(155deg,#091e30 0%,#0b4d36 38%,#1b3e06 72%,#6a3000 100%);
+  display:none;flex-direction:column;align-items:center;
+  padding:18px 14px 22px;overflow-y:auto}
+#lss.show{display:flex}
+.lss-title{font-family:'Fredoka One',cursive;font-size:26px;color:#ffe8a0;
+  text-shadow:0 3px 8px rgba(0,0,0,.5);margin-bottom:3px;margin-top:5px}
+.lss-sub{font-size:12px;color:rgba(255,232,160,.58);letter-spacing:2px;
+  text-transform:uppercase;margin-bottom:18px}
+
+/* ── Level cards grid ── */
+.lv-grid{display:grid;grid-template-columns:repeat(2,1fr);
+  gap:12px;width:100%;max-width:500px}
+.lv-card{background:linear-gradient(145deg,#9b6018,#6b3c0a);border-radius:16px;
+  padding:16px 12px 14px;text-align:center;cursor:pointer;
+  border:2px solid #c9993a;
+  box-shadow:0 5px 0 #4a2008,0 8px 18px rgba(0,0,0,.4);
+  transition:all .18s;position:relative;overflow:hidden}
+.lv-card::before{content:'';position:absolute;top:0;left:0;right:0;height:38%;
+  background:rgba(255,255,255,.07);border-radius:14px 14px 60% 60%}
+.lv-card:hover:not(.locked){transform:translateY(-4px);
+  box-shadow:0 9px 0 #4a2008,0 14px 26px rgba(0,0,0,.45);border-color:#f9c547}
+.lv-card:active:not(.locked){transform:translateY(2px);box-shadow:0 2px 0 #4a2008}
+.lv-card.locked{background:linear-gradient(145deg,#3a2010,#221508);
+  border-color:#4a3018;cursor:not-allowed}
+.lv-card.locked::after{content:'';position:absolute;inset:0;
+  background:rgba(0,0,0,.42);border-radius:14px;z-index:1}
+.lv-card.current-lv{border-color:#f9c547;
+  box-shadow:0 5px 0 #4a2008,0 8px 18px rgba(0,0,0,.4),0 0 18px rgba(249,197,71,.35)}
+
+.lv-card .lv-num{font-family:'Fredoka One',cursive;font-size:22px;color:#ffe8a0;
+  text-shadow:0 2px 5px rgba(0,0,0,.5);display:block;line-height:1}
+.lv-card .lv-nums-badge{
+  display:inline-block;margin:4px 0 6px;
+  background:rgba(0,0,0,.3);border-radius:20px;padding:2px 10px;
+  font-family:'Fredoka One',cursive;font-size:12px;color:#f9c547}
+.lv-card .lv-gsz{font-size:10px;color:rgba(255,232,160,.6);letter-spacing:1px;
+  text-transform:uppercase;display:block;margin-bottom:6px}
+.lv-card .lv-stars{font-size:15px;display:block;min-height:20px;letter-spacing:1px}
+.lv-card .lv-time-hint{font-size:10px;color:rgba(255,232,160,.5);display:block;margin-top:4px}
+.lv-lock-overlay{position:absolute;inset:0;display:flex;align-items:center;
+  justify-content:center;flex-direction:column;z-index:2;color:rgba(255,200,120,.5)}
+.lv-lock-overlay i{font-size:28px}
+.lv-lock-overlay span{font-size:10px;margin-top:4px;letter-spacing:1.5px;text-transform:uppercase;font-weight:800}
+
+.back-btn{display:flex;align-items:center;gap:7px;padding:9px 20px;
+  background:rgba(100,50,0,.7);border:2px solid rgba(200,140,40,.5);
+  border-radius:12px;color:#ffe8a0;font-family:'Fredoka One',cursive;
+  font-size:14px;cursor:pointer;transition:all .15s;margin-bottom:16px;align-self:flex-start}
+.back-btn:hover{background:rgba(150,80,0,.9);border-color:rgba(240,180,60,.8)}
+
+/* ══════════════════════════════
+   GAME SCREEN
+══════════════════════════════ */
+#app{position:relative;z-index:10;min-height:100vh;display:none;
+  flex-direction:column;align-items:center;padding:10px 10px 86px}
+#app.show{display:flex}
+
+/* Header cards */
+.game-header{width:100%;max-width:520px;display:flex;align-items:center;
+  justify-content:space-between;gap:7px;margin-bottom:8px}
+.header-card{background:linear-gradient(145deg,#a0622a,#7a4010);
+  border-radius:13px;padding:7px 12px;color:#fdebc0;text-align:center;
+  box-shadow:0 4px 10px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.14);
+  border:1px solid rgba(255,200,80,.22)}
+.header-card .label{font-family:'Fredoka One',cursive;font-size:9px;letter-spacing:1.5px;
+  text-transform:uppercase;opacity:.72;display:block;margin-bottom:1px}
+.header-card .value{font-family:'Fredoka One',cursive;font-size:20px;line-height:1;
+  color:#ffe8a0;text-shadow:0 2px 4px rgba(0,0,0,.4)}
+.header-card.level-card{flex:1.3}
+.header-card.timer-card{flex:1.5}
+.header-card.moves-card{flex:1}
+.timer-card .value{color:#fff}
+.timer-card.danger .value{color:#ff6b6b;animation:blink .6s ease infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* Board */
+.board-frame{background:linear-gradient(145deg,#9b6018,#6b3c0a);border-radius:18px;padding:12px;
+  box-shadow:0 8px 28px rgba(0,0,0,.45),inset 0 2px 0 rgba(255,200,80,.18),inset 0 -3px 0 rgba(0,0,0,.28);
+  border:3px solid #5a3008;width:100%;max-width:520px}
+.board-inner{background:linear-gradient(135deg,#2d1a05,#3d2208);border-radius:10px;padding:6px;
+  box-shadow:inset 0 4px 14px rgba(0,0,0,.6)}
+#puzzle-board{display:grid;width:100%;position:relative}
+
+/* ── TILES ── */
+.tile{position:relative;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(145deg,#f5dba0,#e0b86a);
+  cursor:pointer;user-select:none;
+  transition:transform .16s cubic-bezier(.4,0,.2,1),box-shadow .16s ease;
+  box-shadow:0 3px 0 #9a6010,0 5px 10px rgba(0,0,0,.38),
+    inset 0 1px 0 rgba(255,255,255,.48),inset 0 -2px 0 rgba(0,0,0,.13);
+  border:1px solid #c9993a;overflow:hidden}
+.tile::before{content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(255,255,255,.33) 0%,transparent 50%);
+  border-radius:inherit;pointer-events:none}
+.tile::after{content:'';position:absolute;inset:0;
+  background:repeating-linear-gradient(100deg,transparent 0px,transparent 7px,
+    rgba(160,90,10,.07) 7px,rgba(160,90,10,.07) 8px);
+  border-radius:inherit;pointer-events:none}
+.tile-num{font-family:'Fredoka One',cursive;color:#3d2504;
+  text-shadow:0 1px 2px rgba(255,255,255,.38);position:relative;z-index:1;line-height:1}
+.tile:hover:not(.empty){transform:translateY(-2px) scale(1.05);
+  background:linear-gradient(145deg,#ffe0a8,#ebc878);
+  box-shadow:0 6px 0 #9a6010,0 9px 16px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.5)}
+.tile:active:not(.empty){transform:translateY(2px) scale(.97);
+  box-shadow:0 1px 0 #9a6010,0 3px 7px rgba(0,0,0,.33),inset 0 2px 5px rgba(0,0,0,.14)}
+.tile.empty{background:linear-gradient(135deg,#1a0d02,#2d1808);
+  box-shadow:inset 0 4px 10px rgba(0,0,0,.68);border-color:transparent;cursor:default}
+.tile.empty::before,.tile.empty::after{display:none}
+.tile.correct{background:linear-gradient(145deg,#b8f0b8,#6dc86d)!important;
+  border-color:#4a8a4a!important;
+  box-shadow:0 3px 0 #2a6a2a,0 5px 10px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.5)!important}
+.tile.hint-highlight{animation:hintPulse .55s ease 3}
+@keyframes hintPulse{0%,100%{background:linear-gradient(145deg,#f5dba0,#e0b86a)}
+  50%{background:linear-gradient(145deg,#ffe566,#ffb830);
+    box-shadow:0 3px 0 #9a6010,0 5px 18px rgba(255,200,0,.65),inset 0 1px 0 rgba(255,255,255,.5)}}
+.tile.win-bounce{animation:winBounce .45s cubic-bezier(.36,.07,.19,.97) forwards}
+@keyframes winBounce{0%{transform:scale(1)}30%{transform:scale(1.14)}
+  60%{transform:scale(.95)}80%{transform:scale(1.06)}100%{transform:scale(1)}}
+@keyframes slideMove{from{transform:translate(var(--sx),var(--sy))}to{transform:translate(0,0)}}
+.tile.sliding{animation:slideMove .16s cubic-bezier(.4,0,.2,1) forwards;z-index:5}
+
+/* Tile border-radius scales with size */
+.tile.tile-sm{border-radius:4px}
+.tile.tile-md{border-radius:7px}
+.tile.tile-lg{border-radius:10px}
+
+/* Level badges row */
+.level-badges-row{width:100%;max-width:520px;margin-bottom:8px;
+  display:flex;flex-wrap:wrap;gap:4px;justify-content:center}
+.lv-badge{padding:4px 7px;min-width:36px;
+  background:rgba(100,50,0,.6);border:2px solid rgba(200,140,40,.4);
+  border-radius:8px;text-align:center;cursor:pointer;
+  transition:all .15s;color:#fdebc0;font-family:'Fredoka One',cursive;font-size:10px}
+.lv-badge.active-lv{background:linear-gradient(145deg,#c98820,#8b5010);border-color:#f0c040}
+.lv-badge.locked-badge{cursor:not-allowed;opacity:.42;filter:grayscale(.5)}
+.lv-badge .lv-sz{font-size:8px;opacity:.65;display:block}
+
+/* Progress bar */
+.progress-bar-wrap{width:100%;max-width:520px;height:5px;
+  background:rgba(0,0,0,.28);border-radius:99px;margin-bottom:7px;overflow:hidden}
+.progress-bar-fill{height:100%;background:linear-gradient(90deg,#f9c547,#e09420);
+  border-radius:99px;transition:width .5s ease}
+
+/* Numbers counter badge */
+.nums-info{font-family:'Fredoka One',cursive;font-size:11px;
+  color:rgba(255,232,160,.72);letter-spacing:1px;text-align:center;
+  margin-bottom:6px}
+
+/* Sound button */
+#sound-btn{position:absolute;right:0;top:50%;transform:translateY(-50%);
+  background:rgba(100,50,0,.6);border:2px solid rgba(200,140,40,.5);
+  border-radius:9px;color:#ffe8a0;width:34px;height:34px;
+  font-size:15px;cursor:pointer;display:flex;align-items:center;
+  justify-content:center;transition:all .2s;z-index:2}
+
+/* Control panel */
+.control-panel{position:fixed;bottom:0;left:0;right:0;z-index:50;
+  display:flex;justify-content:center;padding:9px 14px 14px;
+  background:linear-gradient(0deg,rgba(80,40,0,.97) 80%,transparent 100%);gap:8px}
+.ctrl-btn{flex:1;max-width:140px;display:flex;align-items:center;justify-content:center;
+  gap:5px;padding:10px 8px;border-radius:13px;border:2px solid;
+  font-family:'Fredoka One',cursive;font-size:14px;cursor:pointer;
+  transition:all .14s;position:relative;overflow:hidden;
+  box-shadow:0 4px 0 rgba(0,0,0,.38),0 5px 10px rgba(0,0,0,.28)}
+.ctrl-btn::after{content:'';position:absolute;top:0;left:0;right:0;height:38%;
+  background:rgba(255,255,255,.13);border-radius:11px 11px 60% 60%;pointer-events:none}
+.ctrl-btn:hover{transform:translateY(-2px)}
+.ctrl-btn:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.38)}
+.ctrl-btn:disabled{opacity:.38;cursor:not-allowed;transform:none;filter:grayscale(.5)}
+.btn-hint{background:linear-gradient(145deg,#f9c547,#e09420);border-color:#a06010;color:#3d2000}
+.btn-hint:hover:not(:disabled){background:linear-gradient(145deg,#ffd566,#f0a830)}
+.btn-undo{background:linear-gradient(145deg,#78a0e8,#4a70c8);border-color:#2a4888;color:#fff}
+.btn-undo:hover:not(:disabled){background:linear-gradient(145deg,#90b8f0,#6090e0)}
+.btn-restart{background:linear-gradient(145deg,#e07878,#c04040);border-color:#8a1818;color:#fff}
+.btn-restart:hover:not(:disabled){background:linear-gradient(145deg,#f09090,#d05050)}
+
+/* Modals */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:100;
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;transition:opacity .3s;pointer-events:none}
+.modal-overlay.active{opacity:1;pointer-events:all}
+.modal-box{background:linear-gradient(145deg,#9b6018,#6b3c0a);
+  border-radius:22px;padding:28px 24px;text-align:center;
+  max-width:310px;width:90%;border:3px solid #c9993a;
+  box-shadow:0 20px 56px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.13);
+  transform:scale(.8);transition:transform .3s cubic-bezier(.34,1.56,.64,1)}
+.modal-overlay.active .modal-box{transform:scale(1)}
+.modal-emoji{font-size:52px;margin-bottom:7px;display:block}
+.modal-title{font-family:'Fredoka One',cursive;font-size:26px;color:#ffe8a0;
+  text-shadow:0 2px 7px rgba(0,0,0,.4);margin-bottom:7px}
+.modal-sub{font-size:13px;color:#f5dba0;opacity:.83;margin-bottom:18px}
+.modal-btn{display:inline-block;padding:10px 22px;
+  background:linear-gradient(145deg,#f9c547,#e09420);color:#3d2000;
+  font-family:'Fredoka One',cursive;font-size:16px;border-radius:13px;
+  border:2px solid #a06010;cursor:pointer;
+  box-shadow:0 4px 0 #804000,0 5px 14px rgba(0,0,0,.28);
+  transition:all .14s;text-decoration:none;margin:3px}
+.modal-btn:hover{background:linear-gradient(145deg,#ffd566,#f0a830);transform:translateY(-2px)}
+.modal-btn:active{transform:translateY(2px);box-shadow:0 1px 0 #804000}
+.modal-btn.sec{background:linear-gradient(145deg,#78a0e8,#4a70c8);border-color:#2a4888;color:#fff}
+.modal-btn.sec:hover{background:linear-gradient(145deg,#90b8f0,#6090e0)}
+.win-stats{display:flex;gap:8px;justify-content:center;margin-bottom:14px;flex-wrap:wrap}
+.win-stat{background:rgba(0,0,0,.24);border-radius:9px;padding:7px 11px;color:#fdebc0}
+.win-stat .ws-label{font-size:10px;opacity:.68;text-transform:uppercase;letter-spacing:1px}
+.win-stat .ws-val{font-family:'Fredoka One',cursive;font-size:18px;color:#ffe8a0}
+@keyframes shakeNo{0%,100%{transform:scale(1)}
+  18%,54%{transform:scale(1) translateX(-9px)}36%,72%{transform:scale(1) translateX(9px)}}
+.modal-box.shake{animation:shakeNo .48s ease}
+
+@media(max-width:380px){
+  .header-card .value{font-size:17px}
+  .ctrl-btn{font-size:12px;padding:8px 6px}
+  .lv-card{padding:12px 8px 10px}}
+</style>
+</head>
+<body>
+
+<!-- Decorative -->
+<div class="sun"></div>
+<div class="cloud cloud1"></div>
+<div class="cloud cloud2"></div>
+<div class="cactus">🌵</div>
+<div class="cactus2">🌵</div>
+
+<!-- ═══════════════════════
+     SPLASH
+═══════════════════════ -->
+<div id="splash">
+  <div id="float-tiles-wrap"></div>
+  <div class="splash-center">
+    <div class="splash-puzzle-icon" id="splash-puzzle"></div>
+    <div class="splash-title">🧩 Slide &amp; Sort</div>
+    <div class="splash-sub">Number Puzzle Master</div>
+    <button class="splash-play-btn" onclick="showLevelSelect()">
+      <i class="bi bi-play-fill"></i> Play Now
+    </button>
+  </div>
+</div>
+
+<!-- ═══════════════════════
+     LEVEL SELECT
+═══════════════════════ -->
+<div id="lss">
+  <button class="back-btn" onclick="showSplash()">
+    <i class="bi bi-arrow-left"></i> Back
+  </button>
+  <div class="lss-title">🗺️ Choose Level</div>
+  <div class="lss-sub">Complete levels to unlock the next!</div>
+  <div class="lv-grid" id="level-grid"></div>
+</div>
+
+<!-- ═══════════════════════
+     GAME SCREEN
+═══════════════════════ -->
+<div id="app">
+  <!-- Title bar -->
+  <div style="margin-bottom:7px;text-align:center;position:relative;width:100%;max-width:520px;">
+    <h1 onclick="goToLevelSelect()"
+      style="font-family:'Fredoka One',cursive;font-size:22px;color:#ffe8a0;
+        text-shadow:0 3px 7px rgba(0,0,0,.5);letter-spacing:1px;cursor:pointer;">
+      ← 🧩 Slide &amp; Sort
+    </h1>
+    <button id="sound-btn" onclick="toggleSound()">
+      <i class="bi bi-volume-up-fill"></i>
+    </button>
+  </div>
+
+  <!-- Level badges -->
+  <div class="level-badges-row" id="level-badges"></div>
+
+  <!-- Progress bar -->
+  <div class="progress-bar-wrap">
+    <div class="progress-bar-fill" id="progress-fill" style="width:100%"></div>
+  </div>
+
+  <!-- Nums info -->
+  <div class="nums-info" id="nums-info">Numbers: 1 – 11</div>
+
+  <!-- Header cards -->
+  <div class="game-header">
+    <div class="header-card level-card">
+      <span class="label">Level</span>
+      <span class="value" id="hdr-level">1</span>
+    </div>
+    <div class="header-card timer-card" id="timer-card">
+      <span class="label">Time</span>
+      <span class="value" id="hdr-timer">--:--</span>
+    </div>
+    <div class="header-card moves-card">
+      <span class="label">Moves</span>
+      <span class="value" id="hdr-moves">0</span>
+    </div>
+  </div>
+
+  <!-- Board -->
+  <div class="board-frame">
+    <div class="board-inner">
+      <div id="puzzle-board"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Control Panel -->
+<div class="control-panel" id="ctrl-panel" style="display:none">
+  <button class="ctrl-btn btn-hint" id="btn-hint" onclick="useHint()">
+    <i class="bi bi-lightbulb-fill"></i>
+    <span>Hint (<span id="hint-count">3</span>)</span>
+  </button>
+  <button class="ctrl-btn btn-undo" id="btn-undo" onclick="undoMove()" disabled>
+    <i class="bi bi-arrow-counterclockwise"></i> Undo
+  </button>
+  <button class="ctrl-btn btn-restart" onclick="sfxButtonClick();restartLevel()">
+    <i class="bi bi-arrow-repeat"></i> Restart
+  </button>
+</div>
+
+<!-- Win Modal -->
+<div class="modal-overlay" id="win-modal">
+  <div class="modal-box">
+    <span class="modal-emoji">🎉</span>
+    <div class="modal-title">Level Complete!</div>
+    <div class="win-stats">
+      <div class="win-stat"><div class="ws-label">Moves</div><div class="ws-val" id="win-moves">0</div></div>
+      <div class="win-stat"><div class="ws-label">Time</div><div class="ws-val" id="win-time">0s</div></div>
+      <div class="win-stat"><div class="ws-label">Stars</div><div class="ws-val" id="win-stars">⭐⭐⭐</div></div>
+    </div>
+    <div class="modal-sub">Next level in <span id="win-cd">3</span>s…</div>
+    <a class="modal-btn" id="btn-next-lv" onclick="nextLevel()">Next Level →</a>
+    <a class="modal-btn sec" onclick="goToLevelSelect()">🗺️ Levels</a>
+  </div>
+</div>
+
+<!-- Time's Up -->
+<div class="modal-overlay" id="timesup-modal">
+  <div class="modal-box">
+    <span class="modal-emoji">⏰</span>
+    <div class="modal-title">Time's Up!</div>
+    <div class="modal-sub">You can do it — try again!</div>
+    <a class="modal-btn" onclick="restartLevel()">Try Again</a>
+    <a class="modal-btn sec" onclick="goToLevelSelect()">🗺️ Levels</a>
+  </div>
+</div>
+
+<!-- All Done -->
+<div class="modal-overlay" id="alldone-modal">
+  <div class="modal-box">
+    <span class="modal-emoji">🏆</span>
+    <div class="modal-title">Champion!</div>
+    <div class="modal-sub">All 10 levels beaten! You're incredible! 🌟</div>
+    <a class="modal-btn" onclick="resetGame()">Play Again 🔄</a>
+    <a class="modal-btn sec" onclick="goToLevelSelect()">🗺️ Levels</a>
+  </div>
+</div>
+
+<!-- Locked -->
+<div class="modal-overlay" id="locked-modal">
+  <div class="modal-box">
+    <span class="modal-emoji">🔒</span>
+    <div class="modal-title">Level Locked!</div>
+    <div class="modal-sub" id="locked-msg">Complete the previous level first!</div>
+    <a class="modal-btn" onclick="hideModal('locked-modal')">Got It!</a>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   10-LEVEL CONFIG
+   Each level = rows × cols grid
+   Numbers shown = (rows×cols) - 1   (one cell is empty)
+
+   Level 1  : 3×4  = 12 cells → 11 numbers  ≈  10
+   Level 2  : 4×5  = 20 cells → 19 numbers  ≈  20
+   Level 3  : 5×6  = 30 cells → 29 numbers  ≈  30
+   Level 4  : 6×7  = 42 cells → 41 numbers  ≈  40
+   Level 5  : 7×8  = 56 cells → 55 numbers  ≈  50
+   Level 6  : 7×9  = 63 cells → 62 numbers  ≈  60
+   Level 7  : 8×9  = 72 cells → 71 numbers  ≈  70
+   Level 8  : 8×10 = 80 cells → 79 numbers  ≈  80
+   Level 9  : 9×10 = 90 cells → 89 numbers  ≈  90
+   Level 10 : 10×10=100 cells → 99 numbers  ≈ 100
+═══════════════════════════════════════════════════════ */
+const LEVELS = [
+  {rows:3,  cols:4,  time:90,   hints:6, shuffleMult:60,  label:'3×4'},
+  {rows:4,  cols:5,  time:150,  hints:5, shuffleMult:90,  label:'4×5'},
+  {rows:5,  cols:6,  time:240,  hints:4, shuffleMult:120, label:'5×6'},
+  {rows:6,  cols:7,  time:360,  hints:3, shuffleMult:160, label:'6×7'},
+  {rows:7,  cols:8,  time:480,  hints:3, shuffleMult:200, label:'7×8'},
+  {rows:7,  cols:9,  time:600,  hints:2, shuffleMult:240, label:'7×9'},
+  {rows:8,  cols:9,  time:720,  hints:2, shuffleMult:280, label:'8×9'},
+  {rows:8,  cols:10, time:840,  hints:1, shuffleMult:320, label:'8×10'},
+  {rows:9,  cols:10, time:960,  hints:1, shuffleMult:360, label:'9×10'},
+  {rows:10, cols:10, time:1200, hints:1, shuffleMult:400, label:'10×10'},
+];
+
+/* ═════════════ STATE ════════════ */
+let currentLevel  = 0;
+let unlockedLevel = 0;
+let starsEarned   = {};
+let board=[], numRows=3, numCols=4, totalCells=12, emptyIndex=0;
+let moveCount=0, hintsLeft=3;
+let timerSecs=0, timerMax=90, timerInterval=null;
+let moveHistory=[], levelStartTime=null;
+let soundEnabled=true, audioCtx=null;
+
+/* ═════════════ SOUND ════════════ */
+function getACtx(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();return audioCtx}
+function playTone(f,t,d,v,sf){
+  if(!soundEnabled)return;
+  try{
+    const c=getACtx(),o=c.createOscillator(),g=c.createGain();
+    o.connect(g);g.connect(c.destination);
+    o.type=t||'sine';o.frequency.setValueAtTime(sf||f,c.currentTime);
+    if(sf)o.frequency.exponentialRampToValueAtTime(f,c.currentTime+d*.5);
+    g.gain.setValueAtTime(v||.25,c.currentTime);
+    g.gain.exponentialRampToValueAtTime(.001,c.currentTime+d);
+    o.start(c.currentTime);o.stop(c.currentTime+d);
+  }catch(e){}
+}
+function sfxSlide()        {playTone(180,'triangle',.12,.3,260);playTone(90,'sine',.08,.15)}
+function sfxHint()         {[660,880,1100].forEach((f,i)=>setTimeout(()=>playTone(f,'sine',.14,.18,f-220),i*110))}
+function sfxUndo()         {playTone(440,'sine',.12,.2,660);setTimeout(()=>playTone(330,'sine',.12,.15,440),100)}
+function sfxTimesUp()      {[440,370,330,280].forEach((f,i)=>setTimeout(()=>playTone(f,'sawtooth',.24,.2),i*145))}
+function sfxLevelStart()   {playTone(520,'sine',.1,.2);setTimeout(()=>playTone(780,'sine',.15,.22),110)}
+function sfxCorrectPlace() {playTone(880,'sine',.17,.14)}
+function sfxButtonClick()  {playTone(300,'triangle',.07,.14)}
+function sfxLocked()       {playTone(200,'sawtooth',.1,.2);setTimeout(()=>playTone(150,'sawtooth',.14,.2),100)}
+function sfxWin(){
+  [523,659,784,1047].forEach((f,i)=>setTimeout(()=>playTone(f,'sine',.34,.3),i*115));
+  setTimeout(()=>playTone(1047,'triangle',.55,.34),4*115);
+  setTimeout(speakCongrats,720);
+}
+function speakCongrats(){
+  if(!soundEnabled||!window.speechSynthesis)return;
+  window.speechSynthesis.cancel();
+  const msgs=[
+    "مبارک ہو! آپ نے لیول کمپلیٹ کر لیا ہے!",
+    "واہ! بہت شاندار! آپ نے بیس نمبر والا لیول جیت لیا!",
+    "بہت خوب! تیس نمبر بھی آسان تھے آپ کے لیے!",
+    "شاباش! آپ چالیس نمبر بھی حل کر لیے! لاجواب!",
+    "ارے واہ! پچاس نمبر! آپ واقعی بہت ذہین ہیں!",
+    "کمال کر دیا! ساٹھ نمبر کا لیول جیت لیا!",
+    "بہت بڑھیا! ستر نمبر بھی آپ نے حل کر دیے!",
+    "ناقابل یقین! اسی نمبر والا لیول جیت لیا! شاندار!",
+    "اللہ اللہ! نوے نمبر! آپ ایک چیمپیئن ہیں!",
+    "مبارک ہو! سو نمبر کا لیول مکمل! آپ گرینڈ ماسٹر ہیں! بہت بہت مبارک ہو!",
+  ];
+  const u=new SpeechSynthesisUtterance(msgs[Math.min(currentLevel,msgs.length-1)]);
+  const vs=window.speechSynthesis.getVoices();
+  const v=vs.find(x=>x.lang==='ur-PK')||vs.find(x=>x.lang==='ur-IN')||
+          vs.find(x=>x.lang.startsWith('ur'))||vs.find(x=>x.lang.startsWith('hi'))||null;
+  if(v)u.voice=v;u.lang='ur-PK';u.rate=.86;u.pitch=1.14;u.volume=1;
+  window.speechSynthesis.speak(u);
+}
+if(window.speechSynthesis){
+  window.speechSynthesis.getVoices();
+  window.speechSynthesis.onvoiceschanged=()=>window.speechSynthesis.getVoices();
+}
+function toggleSound(){
+  soundEnabled=!soundEnabled;
+  $('#sound-btn i').attr('class',soundEnabled?'bi bi-volume-up-fill':'bi bi-volume-mute-fill');
+  $('#sound-btn').css('opacity',soundEnabled?'1':'0.55');
+  if(soundEnabled)sfxButtonClick();
+}
+
+/* ═════════════ SPLASH ════════════ */
+function buildSplash(){
+  const $p=$('#splash-puzzle');$p.empty();
+  [1,2,3,4,'',5,6,7,8].forEach((n,i)=>{
+    $p.append(`<div class="sp-tile ${n===''?'empty':''}" style="animation-delay:${i*.055}s">${n}</div>`);
+  });
+  const $f=$('#float-tiles-wrap');$f.empty();
+  for(let i=0;i<18;i++){
+    const sz=36+Math.random()*46,l=Math.random()*100,dl=Math.random()*20,dr=10+Math.random()*17;
+    $f.append(`<div class="float-tile" style="width:${sz}px;height:${sz}px;left:${l}%;font-size:${sz*.37}px;animation-duration:${dr}s;animation-delay:${dl}s">${Math.floor(Math.random()*99)+1}</div>`);
+  }
+}
+
+/* ═════════════ SCREEN NAV ════════════ */
+function showSplash(){
+  stopTimer();hideAllModals();buildSplash();
+  $('#splash').removeClass('hide').show();
+  $('#lss').removeClass('show');
+  $('#app').removeClass('show');
+  $('#ctrl-panel').hide();
+}
+function showLevelSelect(){
+  sfxButtonClick();
+  $('#splash').addClass('hide');
+  setTimeout(()=>$('#splash').hide(),860);
+  buildLevelGrid();$('#lss').addClass('show');
+}
+function goToLevelSelect(){
+  sfxButtonClick();stopTimer();hideAllModals();
+  $('#app').removeClass('show');$('#ctrl-panel').hide();
+  buildLevelGrid();$('#lss').addClass('show');
+}
+function goToGame(){
+  $('#lss').removeClass('show');
+  $('#app').addClass('show');$('#ctrl-panel').show();
+}
+
+/* ═════════════ LEVEL SELECT GRID ════════════ */
+function buildLevelGrid(){
+  const $g=$('#level-grid');$g.empty();
+  LEVELS.forEach((lv,i)=>{
+    const locked=i>unlockedLevel;
+    const stars=starsEarned[i]||0;
+    const numNums=(lv.rows*lv.cols)-1;
+    const starStr=stars===3?'⭐⭐⭐':stars===2?'⭐⭐':stars===1?'⭐':'';
+    const mins=Math.floor(lv.time/60),secs=lv.time%60;
+    const timeStr=mins>0?`${mins}m ${secs>0?secs+'s':''}`:`${secs}s`;
+    $g.append(`
+      <div class="lv-card ${locked?'locked':''} ${i===currentLevel&&!locked?'current-lv':''}" data-i="${i}">
+        <span class="lv-num">Level ${i+1}</span>
+        <span class="lv-nums-badge">~${Math.round(numNums/10)*10} Numbers</span>
+        <span class="lv-gsz">${lv.label} Grid</span>
+        <span class="lv-stars">${locked?'':starStr||'○○○'}</span>
+        <span class="lv-time-hint">⏱ ${timeStr} · 💡 ${lv.hints}</span>
+        ${locked?`<div class="lv-lock-overlay"><i class="bi bi-lock-fill"></i><span>Locked</span></div>`:''}
+      </div>`);
+  });
+  $('#level-grid .lv-card').on('click',function(){
+    const i=parseInt($(this).data('i')),locked=i>unlockedLevel;
+    if(locked){
+      sfxLocked();
+      $('#locked-msg').text(`Complete Level ${i} to unlock Level ${i+1}!`);
+      showModal('locked-modal');
+      setTimeout(()=>$('#locked-modal .modal-box').addClass('shake'),50);
+      setTimeout(()=>$('#locked-modal .modal-box').removeClass('shake'),580);
+      return;
+    }
+    sfxButtonClick();startLevel(i);
+  });
+}
+
+/* ═════════════ LEVEL BADGES (in-game) ════════════ */
+function buildBadges(){
+  const $w=$('#level-badges');$w.empty();
+  LEVELS.forEach((lv,i)=>{
+    const locked=i>unlockedLevel;
+    $w.append(`<div class="lv-badge ${i===currentLevel?'active-lv':''} ${locked?'locked-badge':''}" data-i="${i}">
+      ${i+1}
+      ${locked?'<span style="font-size:8px">🔒</span>':`<span class="lv-sz">${lv.label}</span>`}
+    </div>`);
+  });
+  $('#level-badges .lv-badge').on('click',function(){
+    const i=parseInt($(this).data('i'));
+    if(i>unlockedLevel){sfxLocked();return;}
+    sfxButtonClick();startLevel(i);
+  });
+}
+
+/* ═════════════ LEVEL START ════════════ */
+function startLevel(idx){
+  if(idx>=LEVELS.length){showModal('alldone-modal');return;}
+  hideAllModals();goToGame();
+
+  currentLevel=idx;
+  const lv=LEVELS[idx];
+  numRows=lv.rows; numCols=lv.cols;
+  totalCells=numRows*numCols;
+  hintsLeft=lv.hints; moveCount=0; moveHistory=[];
+  timerMax=lv.time; timerSecs=lv.time;
+  levelStartTime=Date.now();
+
+  buildBadges(); updateHeader();
+
+  // Update numbers info badge
+  const numNums=totalCells-1;
+  $('#nums-info').text(`Numbers: 1 – ${numNums}  (${lv.label} Grid)`);
+
+  // Build solved board: [1,2,...,N-1, 0]
+  board=[];
+  for(let i=0;i<totalCells-1;i++) board[i]=i+1;
+  board[totalCells-1]=0;
+  emptyIndex=totalCells-1;
+
+  shuffleBoard(lv.shuffleMult*Math.max(numRows,numCols));
+  renderBoard();
+  stopTimer();startTimer();sfxLevelStart();
+}
+
+/* ═════════════ SHUFFLE ════════════ */
+function shuffleBoard(moves){
+  let last=-1;
+  for(let m=0;m<moves;m++){
+    const nb=getNeighbors(emptyIndex),f=nb.filter(n=>n!==last);
+    const pick=f.length?f:nb;
+    const c=pick[Math.floor(Math.random()*pick.length)];
+    last=emptyIndex;
+    [board[emptyIndex],board[c]]=[board[c],board[emptyIndex]];
+    emptyIndex=c;
+  }
+}
+
+/* ═════════════ NEIGHBORS (uses numCols as row width) ════════════ */
+function getNeighbors(e){
+  const n=[],r=Math.floor(e/numCols),c=e%numCols;
+  if(r>0)           n.push(e-numCols);   // up
+  if(r<numRows-1)   n.push(e+numCols);   // down
+  if(c>0)           n.push(e-1);         // left
+  if(c<numCols-1)   n.push(e+1);         // right
+  return n;
+}
+
+/* ═════════════ RENDER BOARD ════════════ */
+function renderBoard(){
+  const $b=$('#puzzle-board');$b.empty();
+
+  // Grid layout + aspect ratio
+  $b.css({
+    'grid-template-columns':`repeat(${numCols},1fr)`,
+    'grid-template-rows':`repeat(${numRows},1fr)`,
+    'aspect-ratio':`${numCols}/${numRows}`,
+    'gap': totalCells>56 ? '3px' : totalCells>30 ? '4px' : '5px'
+  });
+
+  // Font size based on total cells
+  const fs = totalCells<=12?'26px':totalCells<=20?'20px':totalCells<=30?'16px':
+             totalCells<=42?'13px':totalCells<=56?'11px':totalCells<=72?'10px':
+             totalCells<=80?'9px':totalCells<=90?'8px':'7px';
+  // Border radius class
+  const brCls = totalCells>56?'tile-sm':totalCells>20?'tile-md':'tile-lg';
+
+  board.forEach((num,idx)=>{
+    const ie=num===0;
+    const $t=$(`<div class="tile ${brCls} ${ie?'empty':''}" data-idx="${idx}"></div>`);
+    if(!ie){
+      $t.html(`<span class="tile-num" style="font-size:${fs}">${num}</span>`);
+      if(num===idx+1) $t.addClass('correct');
+    }
+    $t.on('click',()=>moveTile(idx));
+    $b.append($t);
+  });
+}
+
+/* ═════════════ MOVE TILE ════════════ */
+function moveTile(ti){
+  if(ti===emptyIndex)return;
+  const nb=getNeighbors(emptyIndex);
+  if(!nb.includes(ti))return;
+
+  moveHistory.push({board:[...board],emptyIndex});
+
+  const $t=$(`.tile[data-idx="${ti}"]`),cs=$t.outerWidth();
+  const tr=Math.floor(ti/numCols),tc=ti%numCols;
+  const er=Math.floor(emptyIndex/numCols),ec=emptyIndex%numCols;
+  const gap=totalCells>56?3:totalCells>30?4:5;
+  const dx=(ec-tc)*(cs+gap),dy=(er-tr)*(cs+gap);
+  $t.css({'--sx':`${-dx}px`,'--sy':`${-dy}px`}).addClass('sliding');
+
+  [board[emptyIndex],board[ti]]=[board[ti],board[emptyIndex]];
+  emptyIndex=ti; moveCount++; sfxSlide(); updateHeader();
+
+  setTimeout(()=>{
+    renderBoard();
+    const v=board[emptyIndex];
+    if(v!==0&&emptyIndex===v-1) sfxCorrectPlace();
+    updateUndoBtn(); checkWin();
+  },165);
+}
+
+/* ═════════════ WIN CHECK ════════════ */
+function checkWin(){
+  for(let i=0;i<totalCells-1;i++) if(board[i]!==i+1) return false;
+  if(board[totalCells-1]!==0) return false;
+  stopTimer();
+
+  // Unlock next level
+  if(currentLevel>=unlockedLevel&&currentLevel<LEVELS.length-1){
+    unlockedLevel=currentLevel+1;
+  }
+  // Stars
+  const el=Math.round((Date.now()-levelStartTime)/1000);
+  const r=el/timerMax;
+  const stars=r<.35?3:r<.65?2:1;
+  starsEarned[currentLevel]=Math.max(starsEarned[currentLevel]||0,stars);
+
+  sfxWin(); triggerWinAnim(el,stars);
+  return true;
+}
+function triggerWinAnim(el,stars){
+  // Staggered win bounce (cap at 40 tiles for perf)
+  const $tiles=$('.tile:not(.empty)');
+  const cap=Math.min($tiles.length,40);
+  $tiles.each(function(i){
+    if(i>=cap)return;
+    const $t=$(this);
+    setTimeout(()=>$t.addClass('win-bounce correct'),i*30);
+  });
+  // Mark remaining correct without animation
+  $tiles.each(function(i){
+    if(i>=cap) $(this).addClass('correct');
+  });
+  setTimeout(()=>showWinModal(el,stars), Math.min(cap,40)*30+350);
+}
+function showWinModal(el,stars){
+  const ss=stars===3?'⭐⭐⭐':stars===2?'⭐⭐':'⭐';
+  $('#win-moves').text(moveCount);$('#win-time').text(el+'s');$('#win-stars').text(ss);
+  currentLevel>=LEVELS.length-1?$('#btn-next-lv').hide():$('#btn-next-lv').show();
+  showModal('win-modal');
+  let cd=3;$('#win-cd').text(cd);
+  const ci=setInterval(()=>{cd--;$('#win-cd').text(cd);if(cd<=0){clearInterval(ci);nextLevel();}},1000);
+  $('#win-modal').data('ci',ci);
+}
+function nextLevel(){
+  clearInterval($('#win-modal').data('ci'));
+  if(currentLevel>=LEVELS.length-1){showModal('alldone-modal');return;}
+  startLevel(currentLevel+1);
+}
+function resetGame(){unlockedLevel=0;starsEarned={};hideAllModals();showSplash();}
+
+/* ═════════════ TIMER ════════════ */
+function startTimer(){
+  updateTimerDisplay();
+  timerInterval=setInterval(()=>{
+    timerSecs--;updateTimerDisplay();updateProgress();
+    if(timerSecs<=0){stopTimer();sfxTimesUp();showModal('timesup-modal');}
+  },1000);
+}
+function stopTimer(){clearInterval(timerInterval);timerInterval=null;}
+function updateTimerDisplay(){
+  const m=String(Math.floor(timerSecs/60)).padStart(2,'0');
+  const s=String(timerSecs%60).padStart(2,'0');
+  $('#hdr-timer').text(`${m}:${s}`);
+  $('#timer-card').toggleClass('danger',timerSecs<timerMax*.2&&timerSecs>0);
+}
+function updateProgress(){$('#progress-fill').css('width',Math.max(0,(timerSecs/timerMax)*100)+'%');}
+
+/* ═════════════ HEADER ════════════ */
+function updateHeader(){
+  $('#hdr-level').text(currentLevel+1);$('#hdr-moves').text(moveCount);
+  $('#hint-count').text(hintsLeft);$('#btn-hint').prop('disabled',hintsLeft<=0);
+  updateUndoBtn();
+}
+function updateUndoBtn(){$('#btn-undo').prop('disabled',moveHistory.length===0);}
+function restartLevel(){hideAllModals();startLevel(currentLevel);}
+
+/* ═════════════ HINT ════════════ */
+function useHint(){
+  if(hintsLeft<=0)return;
+  const nb=getNeighbors(emptyIndex);
+  let bm=null;
+  for(const ni of nb){
+    const v=board[ni],ci=v-1;
+    if(v!==0&&ni!==ci&&taxicab(emptyIndex,ci)<taxicab(ni,ci)){bm=ni;break;}
+  }
+  if(!bm)for(const ni of nb){const v=board[ni];if(v!==0&&ni!==v-1){bm=ni;break;}}
+  if(!bm&&nb.length)bm=nb[0];
+  if(bm!==null){
+    hintsLeft--;sfxHint();updateHeader();
+    $(`.tile[data-idx="${bm}"]`).addClass('hint-highlight');
+    setTimeout(()=>moveTile(bm),580);
+  }
+}
+function taxicab(a,b){
+  return Math.abs(Math.floor(a/numCols)-Math.floor(b/numCols))+
+         Math.abs(a%numCols-b%numCols);
+}
+
+/* ═════════════ UNDO ════════════ */
+function undoMove(){
+  if(!moveHistory.length)return;sfxUndo();
+  const p=moveHistory.pop();board=p.board;emptyIndex=p.emptyIndex;
+  renderBoard();updateUndoBtn();
+}
+
+/* ═════════════ MODALS ════════════ */
+function showModal(id){$(`#${id}`).addClass('active');}
+function hideModal(id){$(`#${id}`).removeClass('active');}
+function hideAllModals(){$('.modal-overlay').removeClass('active');}
+
+/* ═════════════ KEYBOARD ════════════ */
+$(document).on('keydown',e=>{
+  if(!$('#app').hasClass('show'))return;
+  const km={
+    ArrowUp:   ()=>{const n=emptyIndex+numCols;if(n<totalCells)moveTile(n);},
+    ArrowDown: ()=>{const n=emptyIndex-numCols;if(n>=0)moveTile(n);},
+    ArrowLeft: ()=>{if(emptyIndex%numCols<numCols-1)moveTile(emptyIndex+1);},
+    ArrowRight:()=>{if(emptyIndex%numCols>0)moveTile(emptyIndex-1);},
+  };
+  if(km[e.key]){e.preventDefault();km[e.key]();}
+  if(e.key==='z'||e.key==='Z')undoMove();
+  if(e.key==='h'||e.key==='H')useHint();
+  if(e.key==='r'||e.key==='R')restartLevel();
+});
+
+/* ═════════════ TOUCH SWIPE ════════════ */
+let tx=0,ty=0;
+document.addEventListener('touchstart',e=>{tx=e.touches[0].clientX;ty=e.touches[0].clientY;},{passive:true});
+document.addEventListener('touchend',e=>{
+  if(!$('#app').hasClass('show'))return;
+  const dx=e.changedTouches[0].clientX-tx,dy=e.changedTouches[0].clientY-ty;
+  if(Math.abs(dx)<18&&Math.abs(dy)<18)return;
+  if(Math.abs(dx)>Math.abs(dy)){
+    if(dx>0&&emptyIndex%numCols>0)           moveTile(emptyIndex-1);
+    else if(dx<0&&emptyIndex%numCols<numCols-1) moveTile(emptyIndex+1);
+  }else{
+    if(dy>0&&emptyIndex>=numCols)             moveTile(emptyIndex-numCols);
+    else if(dy<0&&emptyIndex<totalCells-numCols) moveTile(emptyIndex+numCols);
+  }
+});
+
+/* ═════════════ INIT ════════════ */
+$(document).ready(()=>{ buildSplash(); });
+</script>
+</body>
+</html>
